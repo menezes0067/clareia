@@ -19,7 +19,6 @@ import {
   RoleSwitcherSection,
   StepsSection,
 } from './landing-sections'
-import { AvatarStack } from '@/components/shared/avatar-stack'
 import { Reveal } from '@/components/shared/reveal'
 
 const trustItems = [
@@ -53,7 +52,7 @@ export function LandingPage() {
                       <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-60" />
                       <span className="relative inline-flex size-1.5 rounded-full bg-primary" />
                     </span>
-                    Uma clínica demo pronta para explorar
+                    Gestão odontológica para clínicas modernas
                     <SparklesIcon className="size-3" />
                   </span>
                 </Reveal>
@@ -117,21 +116,9 @@ export function LandingPage() {
                 </Reveal>
 
                 <Reveal delay={320}>
-                  <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-3">
-                    <div className="flex items-center gap-2.5">
-                      <AvatarStack />
-                      <p className="text-[0.66rem] leading-tight text-muted-foreground">
-                        <span className="block font-medium text-ink">
-                          Marina, Rafael e Camila
-                        </span>
-                        já estão na clínica demo
-                      </p>
-                    </div>
-                    <span className="hidden h-6 w-px bg-border sm:block" />
-                    <p className="font-mono text-[0.56rem] uppercase tracking-[0.14em] text-muted-foreground">
-                      sem backend · dados locais
-                    </p>
-                  </div>
+                  <p className="mt-7 font-mono text-[0.62rem] uppercase tracking-[0.14em] text-muted-foreground">
+                    isolamento por clínica · controle por perfil · agenda em tempo real
+                  </p>
                 </Reveal>
               </div>
 

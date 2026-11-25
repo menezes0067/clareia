@@ -9,6 +9,7 @@ import {
   type PatientFormValues,
 } from '@/domain/schemas'
 import { useClinic } from '@/data/clinic-provider'
+import { ApiError } from '@/data/api-client'
 import { useAuth } from '@/features/auth/auth-provider'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -88,7 +89,7 @@ export function PatientFormSheet({
     return dentists.filter((member) => member.status === 'active')
   }, [dentists, isOwner, sessionDentist])
 
-  const onSubmit = (values: PatientFormValues) => {
+  const onSubmit = async (values: PatientFormValues) => {
     const duplicatedEmail = patients.find(
       (item) =>
         item.id !== patient?.id &&
@@ -108,21 +109,32 @@ export function PatientFormSheet({
       notes: values.notes?.trim() ?? '',
     }
 
-    if (patient) {
-      updatePatient(patient.id, payload)
-      toast.success('Paciente atualizado', {
-        description: `${patient.name} · ${new Date().toLocaleTimeString('pt-BR', {
-          hour: '2-digit',
-          minute: '2-digit',
-        })}`,
-      })
-    } else {
-      createPatient(payload)
-      toast.success('Paciente cadastrado', {
-        description: `${values.name} já está na ficha da clínica.`,
-      })
+    try {
+      if (patient) {
+        await updatePatient(patient.id, payload)
+        toast.success('Paciente atualizado', {
+          description: `${patient.name} · ${new Date().toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit',
+          })}`,
+        })
+      } else {
+        await createPatient(payload)
+        toast.success('Paciente cadastrado', {
+          description: `${values.name} já está na ficha da clínica.`,
+        })
+      }
+      onOpenChange(false)
+    } catch (error) {
+      if (error instanceof ApiError) {
+        for (const [field, message] of Object.entries(error.fieldErrors)) {
+          setError(field as keyof PatientFormValues, { message })
+        }
+        toast.error(error.message)
+      } else {
+        toast.error('Não foi possível salvar a ficha do paciente.')
+      }
     }
-    onOpenChange(false)
   }
 
   return (

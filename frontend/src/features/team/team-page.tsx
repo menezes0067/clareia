@@ -20,6 +20,7 @@ import {
 import { toast } from 'sonner'
 import type { Dentist } from '@/domain/types'
 import { useClinic } from '@/data/clinic-provider'
+import { ApiError } from '@/data/api-client'
 import { useAuth } from '@/features/auth/auth-provider'
 import { DentistFormSheet } from './dentist-form-sheet'
 import { startOfWeekISO, addDaysISO, todayISO } from '@/lib/dates'
@@ -116,21 +117,29 @@ export function TeamPage() {
     setFormOpen(true)
   }
 
-  const confirmToggle = () => {
+  const confirmToggle = async () => {
     if (!pendingToggle) return
     const nextStatus =
       pendingToggle.status === 'active' ? 'inactive' : 'active'
-    setDentistStatus(pendingToggle.id, nextStatus)
-    toast.success(
-      nextStatus === 'active' ? 'Dentista reativado' : 'Dentista desativado',
-      {
-        description:
-          nextStatus === 'active'
-            ? `${pendingToggle.name} volta a acessar a clínica.`
-            : `${pendingToggle.name} não consegue mais entrar, mas o histórico fica preservado.`,
-      },
-    )
-    setPendingToggle(undefined)
+    try {
+      await setDentistStatus(pendingToggle.id, nextStatus)
+      toast.success(
+        nextStatus === 'active' ? 'Dentista reativado' : 'Dentista desativado',
+        {
+          description:
+            nextStatus === 'active'
+              ? `${pendingToggle.name} volta a acessar a clínica.`
+              : `${pendingToggle.name} não consegue mais entrar, mas o histórico fica preservado.`,
+        },
+      )
+      setPendingToggle(undefined)
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError
+          ? error.message
+          : 'Não foi possível atualizar o status do dentista.',
+      )
+    }
   }
 
   return (
@@ -386,7 +395,7 @@ export function TeamPage() {
       <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-border bg-card/70 px-4 py-3 text-[0.7rem] text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <PlusIcon className="size-3" />
-          Novos dentistas entram com a senha demo e acesso restrito.
+          Novos dentistas acessam com o e-mail e a senha definidos no cadastro.
         </span>
         <span className="flex items-center gap-1.5">
           <ShieldCheckIcon className="size-3" />

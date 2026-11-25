@@ -19,6 +19,7 @@ import {
 import { toast } from 'sonner'
 import type { Patient } from '@/domain/types'
 import { useClinic } from '@/data/clinic-provider'
+import { ApiError } from '@/data/api-client'
 import { useAuth } from '@/features/auth/auth-provider'
 import { PatientFormSheet } from '@/features/patients/patient-form-sheet'
 import { useAppointmentDialogs } from '@/features/appointments/appointment-dialogs'
@@ -163,13 +164,21 @@ export function PatientDetailPage() {
       )
     : 100
 
-  const confirmArchive = () => {
+  const confirmArchive = async () => {
     if (!pendingArchive) return
-    archivePatient(pendingArchive.id)
-    toast.success('Paciente arquivado', {
-      description: `${pendingArchive.name} continua no histórico da clínica.`,
-    })
-    setPendingArchive(undefined)
+    try {
+      await archivePatient(pendingArchive.id)
+      toast.success('Paciente arquivado', {
+        description: `${pendingArchive.name} continua no histórico da clínica.`,
+      })
+      setPendingArchive(undefined)
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError
+          ? error.message
+          : 'Não foi possível arquivar o paciente.',
+      )
+    }
   }
 
   return (
@@ -262,11 +271,19 @@ export function PatientDetailPage() {
                 size="icon"
                 className="rounded-full"
                 aria-label="Reativar paciente"
-                onClick={() => {
-                  restorePatient(patient.id)
-                  toast.success('Paciente reativado', {
-                    description: `${patient.name} voltou para a lista de ativos.`,
-                  })
+                onClick={async () => {
+                  try {
+                    await restorePatient(patient.id)
+                    toast.success('Paciente reativado', {
+                      description: `${patient.name} voltou para a lista de ativos.`,
+                    })
+                  } catch (error) {
+                    toast.error(
+                      error instanceof ApiError
+                        ? error.message
+                        : 'Não foi possível reativar o paciente.',
+                    )
+                  }
                 }}
               >
                 <RotateCcwIcon className="size-4" />

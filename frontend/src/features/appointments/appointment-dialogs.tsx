@@ -41,6 +41,7 @@ import {
   type AppointmentFormValues,
 } from '@/domain/schemas'
 import { useClinic } from '@/data/clinic-provider'
+import { ApiError } from '@/data/api-client'
 import { useAuth } from '@/features/auth/auth-provider'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -255,7 +256,7 @@ function AppointmentFormSheet({
     return ownPatients
   }, [appointment, patients, selectedDentistId])
 
-  const onSubmit = (values: AppointmentFormValues) => {
+  const onSubmit = async (values: AppointmentFormValues) => {
     const candidate = {
       patientId: values.patientId,
       dentistId: values.dentistId,
@@ -314,21 +315,32 @@ function AppointmentFormSheet({
       notes: values.notes?.trim() || undefined,
     }
 
-    if (appointment) {
-      updateAppointment(appointment.id, payload)
-      toast.success('Consulta atualizada', {
-        description: `${values.date} · ${values.startTime} com ${
-          patients.find((patient) => patient.id === values.patientId)?.name ??
-          'paciente'
-        }`,
-      })
-    } else {
-      createAppointment(payload)
-      toast.success('Consulta agendada', {
-        description: `${formatDateLong(values.date)} · ${values.startTime}`,
-      })
+    try {
+      if (appointment) {
+        await updateAppointment(appointment.id, payload)
+        toast.success('Consulta atualizada', {
+          description: `${values.date} · ${values.startTime} com ${
+            patients.find((patient) => patient.id === values.patientId)?.name ??
+            'paciente'
+          }`,
+        })
+      } else {
+        await createAppointment(payload)
+        toast.success('Consulta agendada', {
+          description: `${formatDateLong(values.date)} · ${values.startTime}`,
+        })
+      }
+      onOpenChange(false)
+    } catch (error) {
+      if (error instanceof ApiError) {
+        for (const [field, message] of Object.entries(error.fieldErrors)) {
+          setError(field as keyof AppointmentFormValues, { message })
+        }
+        toast.error(error.message)
+      } else {
+        toast.error('Não foi possível salvar a consulta.')
+      }
     }
-    onOpenChange(false)
   }
 
   const patient = patients.find((item) => item.id === selectedPatientId)
@@ -637,11 +649,21 @@ function AppointmentDetailsSheet({
   const patient = patients.find((item) => item.id === appointment?.patientId)
   const dentist = dentists.find((item) => item.id === appointment?.dentistId)
 
-  const updateStatus = (status: Appointment['status']) => {
+  const updateStatus = async (status: Appointment['status']) => {
     if (!appointment) return
-    setAppointmentStatus(appointment.id, status)
-    toast.success(`Consulta marcada como ${appointmentStatusLabels[status].toLowerCase()}.`)
-    if (status === 'cancelled') setCancelOpen(false)
+    try {
+      await setAppointmentStatus(appointment.id, status)
+      toast.success(
+        `Consulta marcada como ${appointmentStatusLabels[status].toLowerCase()}.`,
+      )
+      if (status === 'cancelled') setCancelOpen(false)
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError
+          ? error.message
+          : 'Não foi possível alterar o status da consulta.',
+      )
+    }
   }
 
   return (

@@ -6,6 +6,7 @@ import { PlusIcon, SaveIcon, UserCogIcon } from 'lucide-react'
 import type { Dentist } from '@/domain/types'
 import { dentistFormSchema, type DentistFormValues } from '@/domain/schemas'
 import { useClinic } from '@/data/clinic-provider'
+import { ApiError } from '@/data/api-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -43,6 +44,7 @@ export function DentistFormSheet({
       cro: dentist?.cro ?? '',
       specialty: dentist?.specialty ?? '',
       bio: dentist?.bio ?? '',
+      password: '',
     }),
     [dentist],
   )
@@ -63,7 +65,7 @@ export function DentistFormSheet({
     if (open) reset(defaults)
   }, [defaults, open, reset])
 
-  const onSubmit = (values: DentistFormValues) => {
+  const onSubmit = async (values: DentistFormValues) => {
     const duplicatedEmail = dentists.find(
       (member) =>
         member.id !== dentist?.id &&
@@ -76,26 +78,46 @@ export function DentistFormSheet({
       return
     }
 
+    if (!dentist && (!values.password || values.password.length < 6)) {
+      setError('password', {
+        message: 'Informe uma senha com pelo menos 6 caracteres.',
+      })
+      return
+    }
+
     const payload = {
-      ...values,
+      name: values.name,
       email: values.email.trim(),
       phone: values.phone.trim(),
       cro: values.cro.trim(),
+      specialty: values.specialty,
       bio: values.bio?.trim() ?? '',
+      password: values.password?.trim() || undefined,
     }
 
-    if (dentist) {
-      updateDentist(dentist.id, payload)
-      toast.success('Cadastro atualizado', {
-        description: `${values.name} · dados salvos na equipe.`,
-      })
-    } else {
-      createDentist(payload)
-      toast.success('Dentista cadastrado', {
-        description: `${values.name} já pode entrar com o e-mail e a senha demo.`,
-      })
+    try {
+      if (dentist) {
+        await updateDentist(dentist.id, payload)
+        toast.success('Cadastro atualizado', {
+          description: `${values.name} · dados salvos na equipe.`,
+        })
+      } else {
+        await createDentist(payload)
+        toast.success('Dentista cadastrado', {
+          description: `${values.name} já pode entrar com o e-mail e a senha cadastrados.`,
+        })
+      }
+      onOpenChange(false)
+    } catch (error) {
+      if (error instanceof ApiError) {
+        for (const [field, message] of Object.entries(error.fieldErrors)) {
+          setError(field as keyof DentistFormValues, { message })
+        }
+        toast.error(error.message)
+      } else {
+        toast.error('Não foi possível salvar o cadastro do dentista.')
+      }
     }
-    onOpenChange(false)
   }
 
   return (
@@ -148,6 +170,24 @@ export function DentistFormSheet({
                   />
                 </Field>
               </div>
+              <Field
+                label={dentist ? 'Nova senha' : 'Senha de acesso'}
+                optional={Boolean(dentist)}
+                error={errors.password?.message}
+                hint={
+                  dentist
+                    ? 'Deixe em branco para manter a senha atual.'
+                    : 'Mínimo de 6 caracteres.'
+                }
+              >
+                <Input
+                  {...register('password')}
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="••••••••"
+                  aria-invalid={Boolean(errors.password)}
+                />
+              </Field>
             </FormSection>
 
             <FormSection

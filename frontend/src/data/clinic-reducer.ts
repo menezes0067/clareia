@@ -30,7 +30,7 @@ export type ClinicAction =
     }
   | { type: 'clinic:create'; payload: ClinicState }
   | { type: 'clinic:update'; payload: ClinicInput }
-  | { type: 'demo:reset'; payload: ClinicState }
+  | { type: 'workspace:hydrate'; payload: ClinicState }
 
 export function clinicReducer(
   state: ClinicState,
@@ -110,16 +110,13 @@ export function clinicReducer(
         ),
       }
     case 'clinic:create':
-      // A nova clínica substitui o workspace demo por um estado vazio e
-      // vinculado à dona recém-cadastrada.
+    case 'workspace:hydrate':
       return action.payload
     case 'clinic:update':
       return {
         ...state,
         clinic: { ...state.clinic, ...action.payload },
       }
-    case 'demo:reset':
-      return action.payload
     default:
       return state
   }

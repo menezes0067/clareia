@@ -7,7 +7,7 @@ import {
   ArrowRightIcon,
   Building2Icon,
   CheckIcon,
-  KeyRoundIcon,
+  LockKeyholeIcon,
   MailIcon,
   MapPinIcon,
   PhoneIcon,
@@ -18,11 +18,11 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
-  DEMO_PASSWORD,
   onboardingSchema,
   type OnboardingFormValues,
 } from '@/domain/schemas'
 import { useClinic } from '@/data/clinic-provider'
+import { ApiError } from '@/data/api-client'
 import { useAuth } from '@/features/auth/auth-provider'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -38,6 +38,7 @@ const OWNER_FIELDS = [
   'owner.phone',
   'owner.cro',
   'owner.specialty',
+  'owner.password',
 ] as const
 
 export function OnboardingPage() {
@@ -50,7 +51,14 @@ export function OnboardingPage() {
     resolver: zodResolver(onboardingSchema) as Resolver<OnboardingFormValues>,
     mode: 'onBlur',
     defaultValues: {
-      owner: { name: '', email: '', phone: '', cro: '', specialty: '' },
+      owner: {
+        name: '',
+        email: '',
+        phone: '',
+        cro: '',
+        specialty: '',
+        password: '',
+      },
       clinic: { name: '', address: '', cnpj: '', phone: '', email: '' },
     },
   })
@@ -70,29 +78,44 @@ export function OnboardingPage() {
     if (valid) setStep(1)
   }
 
-  const onSubmit = (values: OnboardingFormValues) => {
-    const owner = createClinic({
-      owner: {
-        name: values.owner.name.trim(),
-        email: values.owner.email.trim(),
-        phone: values.owner.phone.trim(),
-        cro: values.owner.cro.trim(),
-        specialty: values.owner.specialty.trim(),
-        bio: '',
-      },
-      clinic: {
-        name: values.clinic.name.trim(),
-        address: values.clinic.address.trim(),
-        cnpj: values.clinic.cnpj.trim(),
-        phone: values.clinic.phone.trim(),
-        email: values.clinic.email.trim(),
-      },
-    })
-    signIn(owner.id)
-    toast.success('Clínica criada com sucesso', {
-      description: 'Seu espaço já está pronto. Bem-vinda à Clareia!',
-    })
-    navigate('/app', { replace: true })
+  const onSubmit = async (values: OnboardingFormValues) => {
+    try {
+      const owner = await createClinic({
+        owner: {
+          name: values.owner.name.trim(),
+          email: values.owner.email.trim(),
+          phone: values.owner.phone.trim(),
+          cro: values.owner.cro.trim(),
+          specialty: values.owner.specialty.trim(),
+          password: values.owner.password,
+          bio: '',
+        },
+        clinic: {
+          name: values.clinic.name.trim(),
+          address: values.clinic.address.trim(),
+          cnpj: values.clinic.cnpj.trim(),
+          phone: values.clinic.phone.trim(),
+          email: values.clinic.email.trim(),
+        },
+      })
+      signIn(owner)
+      toast.success('Clínica criada com sucesso', {
+        description: 'Seu espaço já está pronto. Bem-vinda à Clareia!',
+      })
+      navigate('/app', { replace: true })
+    } catch (error) {
+      if (error instanceof ApiError) {
+        let hasOwnerError = false
+        for (const [field, message] of Object.entries(error.fieldErrors)) {
+          if (field.startsWith('owner.')) hasOwnerError = true
+          form.setError(field as keyof OnboardingFormValues, { message })
+        }
+        if (hasOwnerError) setStep(0)
+        toast.error(error.message)
+      } else {
+        toast.error('Não foi possível criar a clínica.')
+      }
+    }
   }
 
   const owner = watched.owner ?? {}
@@ -265,19 +288,28 @@ export function OnboardingPage() {
                         {...register('owner.specialty')}
                       />
                     </Field>
+                    <Field
+                      label="Senha de acesso"
+                      htmlFor="owner-password"
+                      error={errors.owner?.password?.message}
+                      hint="Mínimo de 6 caracteres."
+                      className="sm:col-span-2"
+                    >
+                      <div className="relative">
+                        <LockKeyholeIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          id="owner-password"
+                          type="password"
+                          autoComplete="new-password"
+                          placeholder="••••••••"
+                          className="pl-9"
+                          aria-invalid={Boolean(errors.owner?.password)}
+                          {...register('owner.password')}
+                        />
+                      </div>
+                    </Field>
                   </div>
                 </FormSection>
-
-                <div className="mt-5 flex items-start gap-2.5 rounded-2xl border border-border bg-[#FBFEFE] p-3">
-                  <KeyRoundIcon className="mt-0.5 size-3.5 shrink-0 text-primary" />
-                  <p className="text-[0.72rem] leading-relaxed text-muted-foreground">
-                    Como esta é uma demonstração, sua senha de acesso será{' '}
-                    <span className="font-mono font-semibold text-ink">
-                      {DEMO_PASSWORD}
-                    </span>
-                    . Sem autenticação real ou dados de pacientes reais.
-                  </p>
-                </div>
 
                 <Button type="submit" size="lg" className="mt-5 w-full rounded-full">
                   Cadastrar dona e continuar
@@ -391,8 +423,9 @@ export function OnboardingPage() {
                 <div className="mt-5 flex items-start gap-2.5 rounded-2xl border border-border bg-[#FBFEFE] p-3">
                   <ShieldCheckIcon className="mt-0.5 size-3.5 shrink-0 text-primary" />
                   <p className="text-[0.72rem] leading-relaxed text-muted-foreground">
-                    Tudo fica salvo apenas neste navegador. Você poderá
-                    cadastrar dentistas, pacientes e consultas em seguida.
+                    Sua clínica será criada com isolamento completo de dados.
+                    Você poderá cadastrar dentistas, pacientes e consultas em
+                    seguida.
                   </p>
                 </div>
 
@@ -518,8 +551,7 @@ export function OnboardingPage() {
 
         <div className="relative z-10 px-10 pb-8">
           <p className="max-w-sm text-[0.7rem] leading-relaxed text-white/45">
-            Um projeto de demonstração com dados fictícios. Nenhum paciente real
-            foi convidado para esta clínica.
+            Clareia — plataforma de gestão odontológica para clínicas e equipes.
           </p>
         </div>
       </aside>

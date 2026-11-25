@@ -3,7 +3,6 @@ import {
   CalendarDaysIcon,
   LayoutDashboardIcon,
   Settings2Icon,
-  SparklesIcon,
   UserCogIcon,
   UsersIcon,
 } from 'lucide-react'
@@ -135,20 +134,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         </NavLink>
       </nav>
 
-      <div className="space-y-3 p-3 pb-5">
-        <div className="rounded-2xl border border-sidebar-border bg-[linear-gradient(145deg,#F3FBFA,#EAF8F6)] p-3.5">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex size-6 items-center justify-center rounded-lg bg-card text-primary shadow-sm">
-              <SparklesIcon className="size-3.5" />
-            </span>
-            <p className="text-[0.7rem] font-semibold text-ink">Modo demonstração</p>
-          </div>
-          <p className="mt-1.5 text-[0.7rem] leading-relaxed text-muted-foreground">
-            Os dados vivem neste navegador e podem ser restaurados nas
-            configurações.
-          </p>
-        </div>
-
+      <div className="space-y-3 border-t border-sidebar-border/70 p-3 pb-5">
         {dentist ? (
           <NavLink
             to="/app/configuracoes"

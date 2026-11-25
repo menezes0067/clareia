@@ -11,7 +11,7 @@ import {
 describe('validação de formulários', () => {
   it('valida login com e-mail e senha', () => {
     expect(
-      loginSchema.safeParse({ email: 'marina@clareia.app', password: 'demo123' })
+      loginSchema.safeParse({ email: 'marina@clareia.app', password: 'senha123' })
         .success,
     ).toBe(true)
     expect(loginSchema.safeParse({ email: 'invalido', password: '' }).success).toBe(
@@ -86,6 +86,7 @@ describe('validação de formulários', () => {
       phone: '(11) 99999-1234',
       cro: 'CRO-SP 12.345',
       specialty: 'Endodontia',
+      password: 'senhaSegura123',
     }
     const clinic = {
       name: 'Clínica Helena',
@@ -96,6 +97,10 @@ describe('validação de formulários', () => {
     }
 
     expect(onboardingSchema.safeParse({ owner, clinic }).success).toBe(true)
+    expect(
+      onboardingSchema.safeParse({ owner: { ...owner, password: '123' }, clinic })
+        .success,
+    ).toBe(false)
     expect(
       onboardingSchema.safeParse({ owner: { ...owner, cro: '' }, clinic })
         .success,

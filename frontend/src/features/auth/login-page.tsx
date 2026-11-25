@@ -11,26 +11,22 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
-  CheckIcon,
-  CrownIcon,
+  CalendarCheck2Icon,
   LockKeyholeIcon,
   MailIcon,
   ShieldCheckIcon,
   SparklesIcon,
+  UsersIcon,
 } from 'lucide-react'
-import { loginSchema, type LoginFormValues, DEMO_PASSWORD } from '@/domain/schemas'
+import { loginSchema, type LoginFormValues } from '@/domain/schemas'
 import { useAuth } from '@/features/auth/auth-provider'
-import { useClinic } from '@/data/clinic-provider'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Logo } from '@/components/shared/logo'
-import { InitialsAvatar } from '@/components/shared/avatar'
-import { dentistRoleLabels } from '@/domain/labels'
 
 export function LoginPage() {
   const { dentist, login } = useAuth()
-  const { dentists } = useClinic()
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams] = useSearchParams()
@@ -38,6 +34,7 @@ export function LoginPage() {
   const from =
     (location.state as { from?: string } | null)?.from ?? '/app'
   const [serverError, setServerError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema) as Resolver<LoginFormValues>,
@@ -46,25 +43,19 @@ export function LoginPage() {
 
   if (dentist) return <Navigate to={from} replace />
 
-  const demoDentists = dentists
-    .filter((member) => member.status === 'active')
-    .sort((a, b) => (a.role === 'owner' ? -1 : b.role === 'owner' ? 1 : 0))
-    .slice(0, 3)
-
-  const onSubmit = (values: LoginFormValues) => {
-    const result = login(values.email, values.password)
-    if (!result.ok) {
-      setServerError(result.error ?? 'Não foi possível entrar.')
-      return
+  const onSubmit = async (values: LoginFormValues) => {
+    setSubmitting(true)
+    try {
+      const result = await login(values.email, values.password)
+      if (!result.ok) {
+        setServerError(result.error ?? 'Não foi possível entrar.')
+        return
+      }
+      setServerError(null)
+      navigate(from, { replace: true })
+    } finally {
+      setSubmitting(false)
     }
-    setServerError(null)
-    navigate(from, { replace: true })
-  }
-
-  const enterDemo = (email: string) => {
-    const result = login(email, DEMO_PASSWORD)
-    if (result.ok) navigate(from, { replace: true })
-    else setServerError(result.error ?? 'Não foi possível entrar.')
   }
 
   return (
@@ -93,8 +84,8 @@ export function LoginPage() {
             Entre na sua <span className="italic text-primary">clínica</span>.
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Sua agenda, seus pacientes e sua equipe no mesmo lugar. Escolha uma
-            conta demo para explorar em segundos.
+            Sua agenda, seus pacientes e sua equipe no mesmo lugar. Informe seu
+            e-mail e senha cadastrados para acessar.
           </p>
 
           <form onSubmit={form.handleSubmit(onSubmit)} className="mt-8 space-y-4">
@@ -108,7 +99,7 @@ export function LoginPage() {
                   id="email"
                   type="email"
                   autoComplete="email"
-                  placeholder="voce@clareia.app"
+                  placeholder="voce@suaclinica.com.br"
                   className="pl-9"
                   aria-invalid={Boolean(form.formState.errors.email)}
                   {...form.register('email')}
@@ -122,14 +113,9 @@ export function LoginPage() {
             </div>
 
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-[0.78rem]">
-                  Senha
-                </Label>
-                <span className="font-mono text-[0.65rem] uppercase tracking-wider text-muted-foreground">
-                  demo: {DEMO_PASSWORD}
-                </span>
-              </div>
+              <Label htmlFor="password" className="text-[0.78rem]">
+                Senha
+              </Label>
               <div className="relative">
                 <LockKeyholeIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -158,8 +144,13 @@ export function LoginPage() {
               </div>
             ) : null}
 
-            <Button type="submit" size="lg" className="w-full rounded-full">
-              Entrar na clínica
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full rounded-full"
+              disabled={submitting}
+            >
+              {submitting ? 'Entrando...' : 'Entrar na clínica'}
               <ArrowRightIcon className="size-4" />
             </Button>
             <p className="pt-1 text-center text-[0.72rem] text-muted-foreground">
@@ -173,46 +164,9 @@ export function LoginPage() {
             </p>
           </form>
 
-          <div className="my-7 flex items-center gap-3">
-            <span className="h-px flex-1 bg-border" />
-            <span className="font-mono text-[0.72rem] uppercase tracking-[0.16em] text-muted-foreground">
-              ou explorar como
-            </span>
-            <span className="h-px flex-1 bg-border" />
-          </div>
-
-          <div className="space-y-2">
-            {demoDentists.map((member) => (
-              <button
-                key={member.id}
-                type="button"
-                onClick={() => enterDemo(member.email)}
-                className="group flex w-full items-center gap-3 rounded-2xl border border-border bg-white/80 p-2.5 text-left transition-all hover:-translate-y-0.5 hover:border-[#B9E9DC] hover:shadow-[0_12px_30px_-20px_rgba(13,124,134,0.5)]"
-              >
-                <InitialsAvatar name={member.name} tone={member.tone} size="sm" />
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-1.5 text-[0.76rem] font-semibold text-ink">
-                    {member.name}
-                    {member.role === 'owner' ? (
-                      <CrownIcon className="size-3 text-[#DDA05F]" />
-                    ) : null}
-                  </span>
-                  <span className="block truncate text-[0.72rem] text-muted-foreground">
-                    {member.role === 'owner'
-                      ? 'Dono · vê a clínica inteira'
-                      : `${member.specialty} · ${dentistRoleLabels[member.role]}`}
-                  </span>
-                </span>
-                <span className="inline-flex size-7 items-center justify-center rounded-full bg-secondary text-primary transition-transform group-hover:translate-x-0.5">
-                  <ArrowRightIcon className="size-3.5" />
-                </span>
-              </button>
-            ))}
-          </div>
-
-          <p className="mt-6 flex items-center justify-center gap-1.5 text-center font-mono text-[0.65rem] uppercase tracking-[0.12em] text-muted-foreground">
+          <p className="mt-8 flex items-center justify-center gap-1.5 text-center font-mono text-[0.65rem] uppercase tracking-[0.12em] text-muted-foreground">
             <ShieldCheckIcon className="size-3" />
-            ambiente de demonstração · dados locais
+            acesso seguro por perfil · clareia
           </p>
         </div>
       </div>
@@ -240,7 +194,7 @@ export function LoginPage() {
         <div className="relative z-10 flex items-center justify-between px-10 pt-8">
           <span className="flex items-center gap-2 font-mono text-[0.72rem] uppercase tracking-[0.18em] text-[#CFF7FA]/70">
             <SparklesIcon className="size-3.5" />
-            clareia · demonstração
+            clareia · gestão odontológica
           </span>
           <span className="rounded-full border border-white/15 px-3 py-1 font-mono text-[0.65rem] uppercase tracking-wider text-white/60">
             2026
@@ -255,49 +209,41 @@ export function LoginPage() {
             resto.
           </p>
 
-          <div className="mt-10 max-w-md rounded-[1.6rem] border border-white/10 bg-white/[0.06] p-4 backdrop-blur-md">
-            <div className="flex items-center justify-between">
-              <p className="font-mono text-[0.65rem] uppercase tracking-[0.16em] text-white/50">
-                hoje na clínica
-              </p>
-              <span className="flex items-center gap-1 rounded-full bg-[#67E8F9]/15 px-2 py-0.5 text-[0.55rem] text-[#CFF7FA]">
-                <span className="size-1 rounded-full bg-[#67E8F9]" />
-                ao vivo
+          <div className="mt-10 max-w-md space-y-2.5 rounded-[1.6rem] border border-white/10 bg-white/[0.06] p-5 backdrop-blur-md">
+            <div className="flex items-start gap-3">
+              <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-xl bg-white/10 text-[#67E8F9]">
+                <CalendarCheck2Icon className="size-4" />
               </span>
+              <div>
+                <p className="text-[0.76rem] font-medium text-white">
+                  Agenda sem conflitos
+                </p>
+                <p className="mt-0.5 text-[0.7rem] leading-relaxed text-white/55">
+                  Validação automática de sobreposições por dentista e por
+                  paciente.
+                </p>
+              </div>
             </div>
-            <div className="mt-3 space-y-1.5">
-              {[
-                { time: '09:00', name: 'Ana Beatriz', label: 'Limpeza · Dra. Marina', tone: 'bg-[#0D7C86]' },
-                { time: '10:30', name: 'Lucas Ferreira', label: 'Ortodontia · Dr. Rafael', tone: 'bg-[#3DAFC0]' },
-                { time: '13:30', name: 'Helena Martins', label: 'Endodontia · Dra. Camila', tone: 'bg-[#66B894]' },
-              ].map((item) => (
-                <div
-                  key={item.time}
-                  className="flex items-center gap-3 rounded-xl bg-white/[0.055] px-3 py-2.5"
-                >
-                  <span className="font-mono text-[0.7rem] text-white/55">
-                    {item.time}
-                  </span>
-                  <span className={`size-1.5 rounded-full ${item.tone}`} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[0.72rem] font-medium text-white">
-                      {item.name}
-                    </span>
-                    <span className="block text-[0.72rem] text-white/45">
-                      {item.label}
-                    </span>
-                  </span>
-                  <CheckIcon className="size-3.5 text-[#67E8F9]" />
-                </div>
-              ))}
+            <div className="flex items-start gap-3 border-t border-white/10 pt-3">
+              <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-xl bg-white/10 text-[#67E8F9]">
+                <UsersIcon className="size-4" />
+              </span>
+              <div>
+                <p className="text-[0.76rem] font-medium text-white">
+                  Isolamento por clínica e perfil
+                </p>
+                <p className="mt-0.5 text-[0.7rem] leading-relaxed text-white/55">
+                  O dono acompanha toda a clínica; cada dentista acessa apenas a
+                  própria agenda e seus pacientes.
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
         <div className="relative z-10 px-10 pb-8">
           <p className="max-w-sm text-[0.7rem] leading-relaxed text-white/45">
-            Um projeto de demonstração com dados fictícios. Nenhum paciente real
-            foi convidado para esta agenda.
+            Clareia — plataforma de gestão odontológica para clínicas e equipes.
           </p>
         </div>
       </aside>

@@ -1,37 +1,70 @@
 import { describe, expect, it } from 'vitest'
 import { clinicReducer } from '@/data/clinic-reducer'
-import { LocalClinicRepository } from '@/data/local-repository'
-import { createSeedState, DB_VERSION } from '@/data/seed'
-import { createClinicState } from '@/domain/clinic'
 import type { ClinicState, Patient } from '@/domain/types'
 
-const now = new Date('2026-11-23T12:00:00.000Z')
+const now = '2026-11-23T12:00:00.000Z'
 
-function seeded(): ClinicState {
-  return createSeedState(now)
-}
-
-function memoryStorage(): Storage {
-  const values = new Map<string, string>()
+function makeState(): ClinicState {
   return {
-    get length() {
-      return values.size
+    clinic: {
+      id: 'clinic-1',
+      name: 'Clareia Odontologia',
+      address: 'Rua das Acácias, 128',
+      cnpj: '12.345.678/0001-95',
+      phone: '(11) 3082-4410',
+      email: 'ola@clareia.app',
+      ownerDentistId: 'dent-marina',
+      createdAt: now,
     },
-    clear: () => values.clear(),
-    getItem: (key: string) => values.get(key) ?? null,
-    key: (index: number) => [...values.keys()][index] ?? null,
-    removeItem: (key: string) => {
-      values.delete(key)
-    },
-    setItem: (key: string, value: string) => {
-      values.set(key, value)
-    },
+    dentists: [
+      {
+        id: 'dent-marina',
+        clinicId: 'clinic-1',
+        name: 'Dra. Marina Prado',
+        email: 'marina@clareia.app',
+        phone: '(11) 99812-4401',
+        cro: 'CRO-SP 48.210',
+        specialty: 'Clínica geral',
+        role: 'owner',
+        status: 'active',
+        tone: 'teal',
+        createdAt: now,
+      },
+      {
+        id: 'dent-rafael',
+        clinicId: 'clinic-1',
+        name: 'Dr. Rafael Nunes',
+        email: 'rafael@clareia.app',
+        phone: '(11) 99775-1290',
+        cro: 'CRO-SP 51.932',
+        specialty: 'Ortodontia',
+        role: 'dentist',
+        status: 'active',
+        tone: 'sky',
+        createdAt: now,
+      },
+    ],
+    patients: [],
+    appointments: [
+      {
+        id: 'appointment-001',
+        clinicId: 'clinic-1',
+        dentistId: 'dent-marina',
+        patientId: 'patient-01',
+        date: '2026-11-23',
+        startTime: '09:00',
+        durationMinutes: 45,
+        type: 'cleaning',
+        status: 'scheduled',
+        createdAt: now,
+      },
+    ],
   }
 }
 
 describe('clinicReducer', () => {
-  it('cria, arquiva e restaura pacientes sem perder os dados', () => {
-    const state = seeded()
+  it('cria, edita, arquiva e restaura pacientes sem perder os dados', () => {
+    const state = makeState()
     const patient: Patient = {
       id: 'patient-new',
       clinicId: state.clinic.id,
@@ -42,7 +75,7 @@ describe('clinicReducer', () => {
       birthDate: '1995-01-01',
       notes: 'Sem alergias',
       status: 'active',
-      createdAt: now.toISOString(),
+      createdAt: now,
     }
 
     const created = clinicReducer(state, {
@@ -72,63 +105,67 @@ describe('clinicReducer', () => {
   })
 
   it('altera status de consultas e dentistas', () => {
-    const state = seeded()
-    const appointmentId = state.appointments[0].id
-    const dentistId = state.dentists[1].id
+    const state = makeState()
 
     const next = clinicReducer(state, {
       type: 'appointment:setStatus',
-      payload: { id: appointmentId, status: 'confirmed' },
+      payload: { id: 'appointment-001', status: 'confirmed' },
     })
-    expect(next.appointments.find((item) => item.id === appointmentId)?.status).toBe(
-      'confirmed',
-    )
+    expect(
+      next.appointments.find((item) => item.id === 'appointment-001')?.status,
+    ).toBe('confirmed')
 
     const withDentist = clinicReducer(next, {
       type: 'dentist:setStatus',
-      payload: { id: dentistId, status: 'inactive' },
+      payload: { id: 'dent-rafael', status: 'inactive' },
     })
-    expect(withDentist.dentists.find((item) => item.id === dentistId)?.status).toBe(
-      'inactive',
-    )
+    expect(
+      withDentist.dentists.find((item) => item.id === 'dent-rafael')?.status,
+    ).toBe('inactive')
   })
 
-  it('substitui o workspace demo quando uma clínica é cadastrada', () => {
-    const state = seeded()
-    const { state: fresh, owner, clinic } = createClinicState(
-      {
-        owner: {
+  it('hidrata o workspace retornado pela API sem mutar o estado anterior', () => {
+    const state = makeState()
+    const fresh: ClinicState = {
+      clinic: {
+        ...state.clinic,
+        id: 'clinic-helena',
+        name: 'Clínica Helena',
+        ownerDentistId: 'dent-helena',
+      },
+      dentists: [
+        {
+          id: 'dent-helena',
+          clinicId: 'clinic-helena',
           name: 'Dra. Helena Barros',
           email: 'helena@clareia.app',
           phone: '(11) 99999-1234',
           cro: 'CRO-SP 12.345',
           specialty: 'Endodontia',
+          role: 'owner',
+          status: 'active',
+          tone: 'teal',
+          createdAt: now,
         },
-        clinic: {
-          name: 'Clínica Helena',
-          address: 'Rua Nova, 42 — São Paulo',
-          cnpj: '12.345.678/0001-95',
-          phone: '(11) 3333-4444',
-          email: 'contato@clinicahelena.com',
-        },
-      },
-      now,
-    )
+      ],
+      patients: [],
+      appointments: [],
+    }
 
-    const created = clinicReducer(state, {
-      type: 'clinic:create',
+    const hydrated = clinicReducer(state, {
+      type: 'workspace:hydrate',
       payload: fresh,
     })
 
-    expect(created.clinic.id).toBe(clinic.id)
-    expect(created.dentists).toEqual([owner])
-    expect(created.patients).toEqual([])
-    expect(created.appointments).toEqual([])
+    expect(hydrated.clinic.id).toBe('clinic-helena')
+    expect(hydrated.dentists).toHaveLength(1)
+    expect(hydrated.patients).toEqual([])
+    expect(hydrated.appointments).toEqual([])
     expect(state.clinic.name).toBe('Clareia Odontologia')
   })
 
-  it('restaura o estado inicial sem mutar o anterior', () => {
-    const state = seeded()
+  it('atualiza os dados da clínica de forma imutável', () => {
+    const state = makeState()
     const changed = clinicReducer(state, {
       type: 'clinic:update',
       payload: {
@@ -141,45 +178,5 @@ describe('clinicReducer', () => {
     })
     expect(changed.clinic.name).toBe('Outra clínica')
     expect(state.clinic.name).toBe('Clareia Odontologia')
-
-    const reset = clinicReducer(changed, {
-      type: 'demo:reset',
-      payload: seeded(),
-    })
-    expect(reset.clinic.name).toBe('Clareia Odontologia')
-  })
-})
-
-describe('LocalClinicRepository', () => {
-  it('persiste e recarrega o estado', () => {
-    const storage = memoryStorage()
-    const repository = new LocalClinicRepository(storage)
-    const state = seeded()
-
-    repository.save(state)
-    expect(repository.load()).toEqual(state)
-    expect(JSON.parse(storage.getItem('clareia:clinic:v1') ?? '{}').version).toBe(
-      DB_VERSION,
-    )
-  })
-
-  it('descarta dados corrompidos e recria a demo', () => {
-    const storage = memoryStorage()
-    storage.setItem('clareia:clinic:v1', '{ dados quebrados')
-    const repository = new LocalClinicRepository(storage)
-
-    expect(repository.load().version).toBe(DB_VERSION)
-    expect(repository.load().dentists.length).toBeGreaterThan(0)
-  })
-
-  it('restaura o estado demo', () => {
-    const storage = memoryStorage()
-    const repository = new LocalClinicRepository(storage)
-    const original = repository.load()
-    original.patients = []
-
-    const reset = repository.reset()
-    expect(reset.patients.length).toBeGreaterThan(0)
-    expect(repository.load().patients.length).toBeGreaterThan(0)
   })
 })

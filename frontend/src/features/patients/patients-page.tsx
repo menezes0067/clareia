@@ -18,6 +18,7 @@ import {
 import { toast } from 'sonner'
 import type { Patient } from '@/domain/types'
 import { useClinic } from '@/data/clinic-provider'
+import { ApiError } from '@/data/api-client'
 import { useAuth } from '@/features/auth/auth-provider'
 import { PatientFormSheet } from './patient-form-sheet'
 import { visiblePatients } from '@/domain/permissions'
@@ -140,20 +141,36 @@ export function PatientsPage() {
     setFormOpen(true)
   }
 
-  const confirmArchive = () => {
+  const confirmArchive = async () => {
     if (!pendingArchive) return
-    archivePatient(pendingArchive.id)
-    toast.success('Paciente arquivado', {
-      description: `${pendingArchive.name} continua no histórico da clínica.`,
-    })
-    setPendingArchive(undefined)
+    try {
+      await archivePatient(pendingArchive.id)
+      toast.success('Paciente arquivado', {
+        description: `${pendingArchive.name} continua no histórico da clínica.`,
+      })
+      setPendingArchive(undefined)
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError
+          ? error.message
+          : 'Não foi possível arquivar o paciente.',
+      )
+    }
   }
 
-  const restore = (patient: Patient) => {
-    restorePatient(patient.id)
-    toast.success('Paciente reativado', {
-      description: `${patient.name} voltou para a lista de ativos.`,
-    })
+  const restore = async (patient: Patient) => {
+    try {
+      await restorePatient(patient.id)
+      toast.success('Paciente reativado', {
+        description: `${patient.name} voltou para a lista de ativos.`,
+      })
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError
+          ? error.message
+          : 'Não foi possível reativar o paciente.',
+      )
+    }
   }
 
   return (

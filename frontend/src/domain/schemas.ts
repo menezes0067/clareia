@@ -3,8 +3,6 @@ import { isValidCnpj } from '@/domain/documents'
 import { isValidISODate, todayISO } from '@/lib/dates'
 import { formatCnpj, formatCro, formatPhone } from '@/lib/format'
 
-export const DEMO_PASSWORD = 'demo123'
-
 const nameField = z
   .string()
   .trim()
@@ -72,6 +70,14 @@ export const dentistFormSchema = z.object({
   cro: croField,
   specialty: z.string().trim().min(2, 'Informe a especialidade.'),
   bio: z.string().max(400, 'Use até 400 caracteres.').optional().default(''),
+  password: z
+    .string()
+    .optional()
+    .default('')
+    .refine(
+      (value) => value.length === 0 || value.length >= 6,
+      'A senha deve ter pelo menos 6 caracteres.',
+    ),
 })
 
 export type DentistFormValues = z.infer<typeof dentistFormSchema>
@@ -83,6 +89,7 @@ export const ownerFormSchema = z.object({
   phone: phoneField,
   cro: croField,
   specialty: z.string().trim().min(2, 'Informe a especialidade.'),
+  password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres.'),
 })
 
 export type OwnerFormValues = z.infer<typeof ownerFormSchema>

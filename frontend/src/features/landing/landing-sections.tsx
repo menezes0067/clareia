@@ -342,8 +342,8 @@ export function PersonaSection() {
             'Acompanhe a ocupação e os retornos',
             'Reatribua pacientes entre dentistas',
           ]}
-          cta="Entrar como dona"
-          href="/login?conta=marina@clareia.app"
+          cta="Criar minha clínica"
+          href="/cadastro"
           tone="teal"
         />
         <PersonaCard
@@ -357,8 +357,8 @@ export function PersonaSection() {
             'Registre observações clínicas',
             'Sem acesso à equipe ou a outros dentistas',
           ]}
-          cta="Entrar como dentista"
-          href="/login?conta=rafael@clareia.app"
+          cta="Entrar na conta"
+          href="/login"
           tone="sky"
         />
       </div>
@@ -692,38 +692,38 @@ export function StepsSection() {
   const steps = [
     {
       number: '01',
-      title: 'Entre como dono',
+      title: 'Cadastre sua clínica',
       description:
-        'Use a conta demo da Marina para conhecer a visão completa da clínica e a gestão da equipe.',
+        'Crie a conta da dona e informe os dados da clínica em dois passos rápidos.',
       icon: CrownIcon,
     },
     {
       number: '02',
-      title: 'Monte a rotina',
+      title: 'Monte a equipe',
       description:
-        'Cadastre dentistas e pacientes, distribua responsáveis e organize a agenda da semana.',
+        'Cadastre seus dentistas, pacientes e organize a agenda da semana sem conflitos.',
       icon: CalendarDaysIcon,
     },
     {
       number: '03',
-      title: 'Troque de perfil',
+      title: 'Trabalhe com clareza',
       description:
-        'Saia e entre como Rafael ou Camila para sentir a diferença de permissões na prática.',
+        'Cada profissional acompanha a própria rotina enquanto a gestão enxerga a clínica inteira.',
       icon: UsersIcon,
     },
   ]
   return (
     <section id="como-funciona" className="container-page py-20 sm:py-24">
       <div className="mx-auto max-w-2xl text-center">
-        <p className="eyebrow mb-3">Como experimentar</p>
+        <p className="eyebrow mb-3">Como começar</p>
         <h2 className="display-title text-4xl text-ink sm:text-5xl">
           Três passos para
           <br />
           <span className="italic text-primary">sentir a diferença.</span>
         </h2>
         <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-          A demonstração já vem com uma clínica inteira montada. Você só precisa
-          escolher por qual porta entrar.
+          Em poucos minutos sua clínica está configurada, com equipe, pacientes
+          e agenda organizados no mesmo lugar.
         </p>
       </div>
 
@@ -813,15 +813,15 @@ export function FinalCtaSection() {
       <div className="relative overflow-hidden rounded-[2.5rem] border border-[#C3E9E7] bg-[linear-gradient(135deg,#F4FCFB_0%,#E8F8F6_50%,#E4F6F5_100%)] px-6 py-14 text-center sm:px-12 sm:py-20">
         <div className="absolute inset-0 dot-grid opacity-25" />
         <div className="relative mx-auto max-w-2xl">
-          <p className="eyebrow">Demonstração aberta</p>
+          <p className="eyebrow">Comece agora</p>
           <h2 className="display-title mt-3 text-4xl text-ink sm:text-5xl lg:text-[3.5rem]">
             Sua clínica merece um sistema
             <br />
             que <span className="italic text-primary">respira.</span>
           </h2>
           <p className="mx-auto mt-4 max-w-lg text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Entre com a conta da dona ou de um dentista e explore os dois lados
-            da Clareia. Só precisa de um navegador.
+            Cadastre sua clínica em dois passos ou entre na sua conta para
+            gerenciar agenda, pacientes e equipe.
           </p>
           <div className="mt-7 flex flex-col items-center justify-center gap-2 sm:flex-row">
             <Link
@@ -847,7 +847,7 @@ export function FinalCtaSection() {
           </div>
           <p className="mt-4 flex items-center justify-center gap-1.5 font-mono text-[0.66rem] uppercase tracking-[0.12em] text-muted-foreground">
             <CircleSlash2Icon className="size-3" />
-            sem cartão · sem backend · dados locais
+            agenda sem conflitos · acesso por perfil · dados protegidos
           </p>
         </div>
       </div>
@@ -865,11 +865,11 @@ export function LandingFooter() {
               clareia
             </p>
             <p className="mt-3 max-w-xs text-[0.72rem] leading-relaxed text-muted-foreground">
-              Gestão odontológica com cuidado de gente. Uma demonstração de
-              front-end feita para clínicas pequenas e médias.
+              Gestão odontológica com cuidado de gente, feita para clínicas
+              pequenas e médias.
             </p>
             <p className="mt-5 font-mono text-[0.54rem] uppercase tracking-[0.16em] text-muted-foreground/70">
-              feito com react · tailwind · shadcn
+              clareia · gestão odontológica
             </p>
           </div>
           <div>
@@ -886,20 +886,19 @@ export function LandingFooter() {
           </div>
           <div>
             <p className="font-mono text-[0.66rem] uppercase tracking-[0.18em] text-muted-foreground">
-              Demonstração
+              Acesso
             </p>
             <div className="mt-3 grid gap-2 text-[0.72rem] text-muted-foreground">
-              <Link className="transition-colors hover:text-ink" to="/login?conta=marina@clareia.app">Entrar como dona</Link>
-              <Link className="transition-colors hover:text-ink" to="/login?conta=rafael@clareia.app">Entrar como dentista</Link>
-              <Link className="transition-colors hover:text-ink" to="/login">Todas as contas</Link>
+              <Link className="transition-colors hover:text-ink" to="/login">Entrar na clínica</Link>
+              <Link className="transition-colors hover:text-ink" to="/cadastro">Cadastrar nova clínica</Link>
             </div>
           </div>
         </div>
         <div className="mt-10 flex flex-col gap-2 border-t border-border pt-5 text-[0.6rem] text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <p>© 2026 Clareia Odontologia — projeto de demonstração.</p>
+          <p>© 2026 Clareia Odontologia.</p>
           <p className="flex items-center gap-1.5 font-mono uppercase tracking-wider">
             <span className="size-1.5 rounded-full bg-[#66B894]" />
-            dados fictícios salvos neste navegador
+            sistema conectado via api
           </p>
         </div>
       </div>

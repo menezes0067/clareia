@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
@@ -7,35 +7,23 @@ import {
   CalendarClockIcon,
   CheckCircle2Icon,
   CrownIcon,
-  DatabaseIcon,
-  KeyRoundIcon,
   LogOutIcon,
   MailIcon,
   MapPinIcon,
   PhoneIcon,
-  RotateCcwIcon,
   SaveIcon,
   ShieldCheckIcon,
   SparklesIcon,
   StethoscopeIcon,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { clinicFormSchema, type ClinicFormValues, DEMO_PASSWORD } from '@/domain/schemas'
+import { clinicFormSchema, type ClinicFormValues } from '@/domain/schemas'
 import { useClinic } from '@/data/clinic-provider'
+import { ApiError } from '@/data/api-client'
 import { useAuth } from '@/features/auth/auth-provider'
 import { dentistRoleLabels, dentistToneLabels } from '@/domain/labels'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import { PageHeader } from '@/components/shared/page-header'
 import { Field, FormSection } from '@/components/shared/form-field'
 import { InitialsAvatar } from '@/components/shared/avatar'
@@ -45,11 +33,9 @@ import { masked } from '@/lib/form'
 import { cn } from '@/lib/utils'
 
 export function SettingsPage() {
-  const { clinic, patients, dentists, appointments, updateClinic, resetDemo } =
-    useClinic()
-  const { dentist, isOwner, logout, signIn } = useAuth()
+  const { clinic, patients, dentists, appointments, updateClinic } = useClinic()
+  const { dentist, isOwner, logout } = useAuth()
   const navigate = useNavigate()
-  const [pendingReset, setPendingReset] = useState(false)
 
   const defaults = useMemo<ClinicFormValues>(
     () => ({
@@ -77,27 +63,29 @@ export function SettingsPage() {
     reset(defaults)
   }, [defaults, reset])
 
-  const onSubmit = (values: ClinicFormValues) => {
-    updateClinic({
-      name: values.name.trim(),
-      address: values.address.trim(),
-      cnpj: values.cnpj.trim(),
-      phone: values.phone.trim(),
-      email: values.email.trim(),
-    })
-    toast.success('Dados da clínica atualizados', {
-      description: 'As alterações já aparecem em todo o sistema.',
-    })
-    reset(values)
-  }
-
-  const confirmReset = () => {
-    const owner = resetDemo()
-    signIn(owner.id)
-    setPendingReset(false)
-    toast.success('Demonstração restaurada', {
-      description: 'Você entrou como dona da clínica demo original.',
-    })
+  const onSubmit = async (values: ClinicFormValues) => {
+    try {
+      await updateClinic({
+        name: values.name.trim(),
+        address: values.address.trim(),
+        cnpj: values.cnpj.trim(),
+        phone: values.phone.trim(),
+        email: values.email.trim(),
+      })
+      toast.success('Dados da clínica atualizados', {
+        description: 'As alterações já aparecem em todo o sistema.',
+      })
+      reset(values)
+    } catch (error) {
+      if (error instanceof ApiError) {
+        for (const [field, message] of Object.entries(error.fieldErrors)) {
+          form.setError(field as keyof ClinicFormValues, { message })
+        }
+        toast.error(error.message)
+      } else {
+        toast.error('Não foi possível atualizar os dados da clínica.')
+      }
+    }
   }
 
   if (!dentist) return null
@@ -107,7 +95,7 @@ export function SettingsPage() {
       <PageHeader
         eyebrow="Configurações"
         title="Onde a clínica se organiza."
-        description="Dados da clínica, conta de acesso e o controle da demonstração."
+        description="Dados da clínica, resumo do espaço e detalhes da sua conta."
       />
 
       <div className="grid gap-4 xl:grid-cols-12">
@@ -181,7 +169,7 @@ export function SettingsPage() {
               {isOwner ? (
                 <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
                   <p className="text-[0.7rem] text-muted-foreground">
-                    Alterações são salvas neste navegador.
+                    Alterações ficam disponíveis imediatamente para toda a equipe.
                   </p>
                   <Button
                     type="submit"
@@ -199,56 +187,36 @@ export function SettingsPage() {
           <div className="surface-card">
             <div className="flex items-start justify-between gap-3 border-b border-border p-5">
               <div>
-                <p className="eyebrow">Demonstração</p>
+                <p className="eyebrow">Resumo</p>
                 <h2 className="mt-1 text-base font-semibold text-ink">
-                  Dados deste navegador
+                  Volume do seu espaço
                 </h2>
                 <p className="mt-1 text-[0.7rem] text-muted-foreground">
-                  A Clareia guarda tudo localmente. Restaurar recria a clínica
-                  demo original.
+                  Totais sincronizados com o servidor da clínica conforme o seu
+                  perfil de acesso.
                 </p>
               </div>
               <span className="inline-flex size-9 items-center justify-center rounded-xl bg-secondary text-primary">
-                <DatabaseIcon className="size-4" />
+                <ShieldCheckIcon className="size-4" />
               </span>
             </div>
 
             <div className="grid gap-3 p-5 sm:grid-cols-3">
-              <DemoStat
+              <SummaryStat
                 icon={StethoscopeIcon}
                 label="Dentistas"
                 value={dentists.length}
               />
-              <DemoStat
+              <SummaryStat
                 icon={CalendarClockIcon}
                 label="Consultas"
                 value={appointments.length}
               />
-              <DemoStat
+              <SummaryStat
                 icon={CheckCircle2Icon}
                 label="Pacientes"
                 value={patients.length}
               />
-            </div>
-
-            <div className="flex flex-col gap-3 border-t border-border p-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-2.5">
-                <span className="mt-0.5 inline-flex size-7 items-center justify-center rounded-lg bg-[#FDF1E4] text-[#7A5327]">
-                  <RotateCcwIcon className="size-3.5" />
-                </span>
-                <p className="max-w-md text-[0.72rem] leading-relaxed text-muted-foreground">
-                  Restaurar apaga as alterações feitas nesta demonstração,
-                  incluindo pacientes, dentistas e consultas criados por você.
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                className="shrink-0 gap-1.5 rounded-full"
-                onClick={() => setPendingReset(true)}
-              >
-                <RotateCcwIcon className="size-4" />
-                Restaurar demo
-              </Button>
             </div>
           </div>
         </div>
@@ -263,8 +231,18 @@ export function SettingsPage() {
                 size="lg"
               />
               <div className="min-w-0">
-                <p className="truncate text-[0.82rem] font-semibold text-ink" title={dentist.name}>{dentist.name}</p>
-                <p className="truncate text-[0.7rem] text-muted-foreground" title={dentist.specialty}>{dentist.specialty}</p>
+                <p
+                  className="truncate text-[0.82rem] font-semibold text-ink"
+                  title={dentist.name}
+                >
+                  {dentist.name}
+                </p>
+                <p
+                  className="truncate text-[0.7rem] text-muted-foreground"
+                  title={dentist.specialty}
+                >
+                  {dentist.specialty}
+                </p>
                 <div className="mt-1.5">
                   <RoleBadge role={dentist.role} />
                 </div>
@@ -297,23 +275,9 @@ export function SettingsPage() {
               ) : null}
             </dl>
 
-            <div className="mt-4 rounded-2xl border border-border bg-[#FBFEFE] p-3">
-              <div className="flex items-center gap-2">
-                <KeyRoundIcon className="size-3.5 text-primary" />
-                <p className="text-[0.72rem] font-semibold text-ink">
-                  Senha de demonstração
-                </p>
-              </div>
-              <p className="mt-1 text-[0.7rem] leading-relaxed text-muted-foreground">
-                Todas as contas usam{' '}
-                <span className="font-mono text-ink">{DEMO_PASSWORD}</span>. Não
-                há autenticação real neste projeto.
-              </p>
-            </div>
-
             <Button
               variant="outline"
-              className="mt-4 w-full gap-1.5 rounded-full"
+              className="mt-5 w-full gap-1.5 rounded-full"
               onClick={() => {
                 logout()
                 navigate('/login')
@@ -358,38 +322,11 @@ export function SettingsPage() {
           )}
         </aside>
       </div>
-
-      <p className="flex items-center justify-center gap-1.5 pb-2 text-center font-mono text-[0.65rem] uppercase tracking-[0.12em] text-muted-foreground">
-        <ShieldCheckIcon className="size-3" />
-        clareia · demonstração local · sem backend
-      </p>
-
-      <AlertDialog open={pendingReset} onOpenChange={setPendingReset}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Restaurar a demonstração?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Todos os pacientes, dentistas e consultas voltam ao estado
-              original. As alterações feitas neste navegador serão perdidas e
-              você entra como dona da clínica demo.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Manter como está</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmReset}
-              variant="destructive-solid"
-            >
-              Restaurar demo
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }
 
-function DemoStat({
+function SummaryStat({
   icon: Icon,
   label,
   value,

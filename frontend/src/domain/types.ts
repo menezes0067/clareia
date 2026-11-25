@@ -77,12 +77,10 @@ export interface Appointment {
 }
 
 export interface ClinicState {
-  version: number
   clinic: Clinic
   dentists: Dentist[]
   patients: Patient[]
   appointments: Appointment[]
-  seededAt: string
 }
 
 export interface PatientInput {
@@ -101,6 +99,7 @@ export interface DentistInput {
   cro: string
   specialty: string
   bio?: string
+  password?: string
 }
 
 export interface AppointmentInput {
@@ -119,4 +118,9 @@ export interface ClinicInput {
   cnpj: string
   phone: string
   email: string
+}
+
+export interface NewClinicInput {
+  owner: DentistInput
+  clinic: ClinicInput
 }

@@ -2,9 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
-  useState,
   useReducer,
   type ReactNode,
 } from 'react'
@@ -14,171 +12,193 @@ import type {
   AppointmentStatus,
   Clinic,
   ClinicInput,
+  ClinicState,
   Dentist,
   DentistInput,
   DentistStatus,
-  DentistTone,
+  NewClinicInput,
   Patient,
   PatientInput,
 } from '@/domain/types'
-import { createId } from '@/lib/id'
-import { createClinicState, type NewClinicInput } from '@/domain/clinic'
 import { clinicReducer } from './clinic-reducer'
 import {
-  LocalClinicRepository,
-  type ClinicRepository,
-} from './local-repository'
+  apiClient,
+  writeAccessToken,
+  type WorkspacePayload,
+} from './api-client'
 
-const TONES: DentistTone[] = ['sky', 'mint', 'sand', 'rose', 'teal']
+const EMPTY_CLINIC_STATE: ClinicState = {
+  clinic: {
+    id: '',
+    name: '',
+    address: '',
+    cnpj: '',
+    phone: '',
+    email: '',
+    ownerDentistId: '',
+    createdAt: '',
+  },
+  dentists: [],
+  patients: [],
+  appointments: [],
+}
 
 interface ClinicContextValue {
   clinic: Clinic
   dentists: Dentist[]
   patients: Patient[]
   appointments: Appointment[]
-  createPatient: (input: PatientInput) => Patient
-  updatePatient: (id: string, input: PatientInput) => void
-  archivePatient: (id: string) => void
-  restorePatient: (id: string) => void
-  createClinic: (input: NewClinicInput) => Dentist
-  createDentist: (input: DentistInput) => Dentist
-  updateDentist: (id: string, input: DentistInput) => void
-  setDentistStatus: (id: string, status: DentistStatus) => void
-  createAppointment: (input: AppointmentInput) => Appointment
-  updateAppointment: (id: string, input: AppointmentInput) => void
-  setAppointmentStatus: (id: string, status: AppointmentStatus) => void
-  updateClinic: (input: ClinicInput) => void
-  resetDemo: () => Dentist
+  refreshWorkspace: () => Promise<WorkspacePayload>
+  resetWorkspaceMemory: () => void
+  createPatient: (input: PatientInput) => Promise<Patient>
+  updatePatient: (id: string, input: PatientInput) => Promise<void>
+  archivePatient: (id: string) => Promise<void>
+  restorePatient: (id: string) => Promise<void>
+  createClinic: (input: NewClinicInput) => Promise<Dentist>
+  createDentist: (input: DentistInput) => Promise<Dentist>
+  updateDentist: (id: string, input: DentistInput) => Promise<void>
+  setDentistStatus: (id: string, status: DentistStatus) => Promise<void>
+  createAppointment: (input: AppointmentInput) => Promise<Appointment>
+  updateAppointment: (id: string, input: AppointmentInput) => Promise<void>
+  setAppointmentStatus: (
+    id: string,
+    status: AppointmentStatus,
+  ) => Promise<void>
+  updateClinic: (input: ClinicInput) => Promise<void>
 }
 
 const ClinicContext = createContext<ClinicContextValue | null>(null)
 
-interface ClinicProviderProps {
-  children: ReactNode
-  repository?: ClinicRepository
-}
+export function ClinicProvider({ children }: { children: ReactNode }) {
+  const [state, dispatch] = useReducer(clinicReducer, EMPTY_CLINIC_STATE)
 
-export function ClinicProvider({ children, repository }: ClinicProviderProps) {
-  const [repositoryInstance] = useState<ClinicRepository>(
-    () => repository ?? new LocalClinicRepository(),
-  )
-  const [state, dispatch] = useReducer(
-    clinicReducer,
-    undefined,
-    () => repositoryInstance.load(),
-  )
-
-  useEffect(() => {
-    repositoryInstance.save(state)
-  }, [repositoryInstance, state])
-
-  const clinicId = state.clinic.id
-
-  const createPatient = useCallback(
-    (input: PatientInput): Patient => {
-      const patient: Patient = {
-        id: createId('patient'),
-        clinicId,
-        ...input,
-        status: 'active',
-        createdAt: new Date().toISOString(),
-      }
-      dispatch({ type: 'patient:create', payload: patient })
-      return patient
-    },
-    [clinicId],
-  )
-
-  const updatePatient = useCallback((id: string, input: PatientInput) => {
-    const changes: Partial<Patient> = { ...input }
-    dispatch({ type: 'patient:update', payload: { id, changes } })
+  const refreshWorkspace = useCallback(async (): Promise<WorkspacePayload> => {
+    const workspace = await apiClient.getWorkspace()
+    dispatch({ type: 'workspace:hydrate', payload: workspace })
+    return workspace
   }, [])
 
-  const archivePatient = useCallback((id: string) => {
+  const resetWorkspaceMemory = useCallback(() => {
+    dispatch({ type: 'workspace:hydrate', payload: EMPTY_CLINIC_STATE })
+  }, [])
+
+  const createPatient = useCallback(
+    async (input: PatientInput): Promise<Patient> => {
+      const created = await apiClient.createPatient(input)
+      dispatch({ type: 'patient:create', payload: created })
+      return created
+    },
+    [],
+  )
+
+  const updatePatient = useCallback(
+    async (id: string, input: PatientInput): Promise<void> => {
+      const updated = await apiClient.updatePatient(id, input)
+      dispatch({ type: 'patient:update', payload: { id, changes: updated } })
+    },
+    [],
+  )
+
+  const archivePatient = useCallback(async (id: string): Promise<void> => {
+    await apiClient.archivePatient(id)
     dispatch({ type: 'patient:archive', payload: { id } })
   }, [])
 
-  const restorePatient = useCallback((id: string) => {
+  const restorePatient = useCallback(async (id: string): Promise<void> => {
+    await apiClient.restorePatient(id)
     dispatch({ type: 'patient:restore', payload: { id } })
   }, [])
 
   const createClinic = useCallback(
-    (input: NewClinicInput): Dentist => {
-      const { owner, state } = createClinicState(input)
-      dispatch({ type: 'clinic:create', payload: state })
-      return owner
+    async (input: NewClinicInput): Promise<Dentist> => {
+      const result = await apiClient.registerClinic(input)
+      writeAccessToken(result.accessToken)
+      dispatch({
+        type: 'clinic:create',
+        payload: {
+          clinic: result.clinic,
+          dentists: [result.dentist],
+          patients: [],
+          appointments: [],
+        },
+      })
+      return result.dentist
     },
     [],
   )
 
   const createDentist = useCallback(
-    (input: DentistInput): Dentist => {
-      const dentist: Dentist = {
-        id: createId('dentist'),
-        clinicId,
-        ...input,
-        role: 'dentist',
-        status: 'active',
-        tone: TONES[state.dentists.length % TONES.length],
-        createdAt: new Date().toISOString(),
-      }
-      dispatch({ type: 'dentist:create', payload: dentist })
-      return dentist
+    async (input: DentistInput): Promise<Dentist> => {
+      const created = await apiClient.createDentist(input)
+      dispatch({ type: 'dentist:create', payload: created })
+      return created
     },
-    [clinicId, state.dentists.length],
+    [],
   )
 
-  const updateDentist = useCallback((id: string, input: DentistInput) => {
-    const changes: Partial<Dentist> = { ...input }
-    dispatch({ type: 'dentist:update', payload: { id, changes } })
-  }, [])
+  const updateDentist = useCallback(
+    async (id: string, input: DentistInput): Promise<void> => {
+      const updated = await apiClient.updateDentist(id, input)
+      dispatch({ type: 'dentist:update', payload: { id, changes: updated } })
+    },
+    [],
+  )
 
   const setDentistStatus = useCallback(
-    (id: string, status: DentistStatus) => {
-      dispatch({ type: 'dentist:setStatus', payload: { id, status } })
+    async (id: string, status: DentistStatus): Promise<void> => {
+      const updated = await apiClient.setDentistStatus(id, status)
+      dispatch({
+        type: 'dentist:setStatus',
+        payload: { id, status: updated.status },
+      })
     },
     [],
   )
 
   const createAppointment = useCallback(
-    (input: AppointmentInput): Appointment => {
-      const appointment: Appointment = {
-        id: createId('appointment'),
-        clinicId,
-        ...input,
-        status: 'scheduled',
-        createdAt: new Date().toISOString(),
-      }
-      dispatch({ type: 'appointment:create', payload: appointment })
-      return appointment
+    async (input: AppointmentInput): Promise<Appointment> => {
+      const created = await apiClient.createAppointment(input)
+      dispatch({ type: 'appointment:create', payload: created })
+      return created
     },
-    [clinicId],
+    [],
   )
 
   const updateAppointment = useCallback(
-    (id: string, input: AppointmentInput) => {
-      const changes: Partial<Appointment> = { ...input }
-      dispatch({ type: 'appointment:update', payload: { id, changes } })
+    async (id: string, input: AppointmentInput): Promise<void> => {
+      const updated = await apiClient.updateAppointment(id, input)
+      dispatch({
+        type: 'appointment:update',
+        payload: { id, changes: updated },
+      })
     },
     [],
   )
 
   const setAppointmentStatus = useCallback(
-    (id: string, status: AppointmentStatus) => {
-      dispatch({ type: 'appointment:setStatus', payload: { id, status } })
+    async (id: string, status: AppointmentStatus): Promise<void> => {
+      const updated = await apiClient.setAppointmentStatus(id, status)
+      dispatch({
+        type: 'appointment:setStatus',
+        payload: { id, status: updated.status },
+      })
     },
     [],
   )
 
-  const updateClinic = useCallback((input: ClinicInput) => {
-    dispatch({ type: 'clinic:update', payload: input })
+  const updateClinic = useCallback(async (input: ClinicInput): Promise<void> => {
+    const updated = await apiClient.updateClinic(input)
+    dispatch({
+      type: 'clinic:update',
+      payload: {
+        name: updated.name,
+        address: updated.address,
+        cnpj: updated.cnpj,
+        phone: updated.phone,
+        email: updated.email,
+      },
+    })
   }, [])
-
-  const resetDemo = useCallback((): Dentist => {
-    const seeded = repositoryInstance.reset()
-    dispatch({ type: 'demo:reset', payload: seeded })
-    return seeded.dentists.find((member) => member.role === 'owner')!
-  }, [repositoryInstance])
 
   const value = useMemo<ClinicContextValue>(
     () => ({
@@ -186,6 +206,8 @@ export function ClinicProvider({ children, repository }: ClinicProviderProps) {
       dentists: state.dentists,
       patients: state.patients,
       appointments: state.appointments,
+      refreshWorkspace,
+      resetWorkspaceMemory,
       createPatient,
       updatePatient,
       archivePatient,
@@ -198,13 +220,14 @@ export function ClinicProvider({ children, repository }: ClinicProviderProps) {
       updateAppointment,
       setAppointmentStatus,
       updateClinic,
-      resetDemo,
     }),
     [
       state.clinic,
       state.dentists,
       state.patients,
       state.appointments,
+      refreshWorkspace,
+      resetWorkspaceMemory,
       createPatient,
       updatePatient,
       archivePatient,
@@ -217,7 +240,6 @@ export function ClinicProvider({ children, repository }: ClinicProviderProps) {
       updateAppointment,
       setAppointmentStatus,
       updateClinic,
-      resetDemo,
     ],
   )
 
