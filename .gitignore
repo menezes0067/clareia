@@ -3,3 +3,20 @@ node_modules/
 dist/
 *.log
 .DS_Store
+
+# Environment variables (NEVER commit real .env files)
+.env
+.env.*
+!.env-example
+
+# Java / Maven / IDE
+backend/target/
+*.class
+*.jar
+*.war
+*.ear
+.idea/
+*.iml
+.classpath
+.project
+.settings/

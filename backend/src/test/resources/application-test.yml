@@ -1,0 +1,26 @@
+spring:
+  config:
+    import: ""
+  datasource:
+    url: jdbc:h2:mem:clareia_test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+
+clareia:
+  timezone: America/Sao_Paulo
+  jwt:
+    secret: test-only-ephemeral-jwt-secret-key-at-least-64-bytes-long-for-junit-tests
+    issuer: clareia-api-test
+    expiration-seconds: 3600
+  cors:
+    allowed-origins: http://localhost:5173
+  demo:
+    enabled: true
+    seed-on-startup: true
+    default-password: demo123

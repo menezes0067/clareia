@@ -1,0 +1,11 @@
+# Profile opcional para rodar localmente sem Docker/PostgreSQL (usa H2 em arquivo)
+spring:
+  datasource:
+    url: jdbc:h2:file:./.data/clareia;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    driver-class-name: org.h2.Driver
+    username: ${DB_USERNAME:clareia_local}
+    password: ${DB_PASSWORD:}
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
